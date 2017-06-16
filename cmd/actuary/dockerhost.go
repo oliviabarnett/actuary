@@ -26,7 +26,7 @@ func CheckSeparatePartion(t Target) (res Result) {
 	fstab := "/etc/fstab"
 	bytes, err := ioutil.ReadFile(fstab)
 	if err != nil {
-		log.Printf("Cannor read fstab")
+		log.Printf("Cannot read fstab")
 		return res
 	}
 	lines := strings.Split(string(bytes), "\n")
