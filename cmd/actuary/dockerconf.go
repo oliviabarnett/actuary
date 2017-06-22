@@ -9,31 +9,31 @@ import (
 	"fmt"
 	"strings"
 
-	"golang.org/x/net/context"
+	//"golang.org/x/net/context"
 
-	"github.com/docker/docker/api/types"
+	//"github.com/docker/docker/api/types"
 )
 
-func RestrictNetTraffic(t Target) (res Result) {
-	var netargs types.NetworkListOptions
-	res.Name = "2.1 Restrict network traffic between containers"
+// func RestrictNetTraffic(t Target) (res Result) {
+// 	var netargs types.NetworkListOptions
+// 	res.Name = "2.1 Restrict network traffic between containers"
 
-	networks, err := t.Client.NetworkList(context.TODO(), netargs)
-	if err != nil {
-		res.Skip("Cannot retrieve network list")
-		return
-	}
-	for _, network := range networks {
-		if network.Name == "bridge" {
-			if network.Options["com.docker.network.bridge.enable_icc"] == "true" {
-				res.Status = "WARN"
-				return
-			}
-		}
-	}
-	res.Pass()
-	return
-}
+// 	networks, err := t.Client.NetworkList(context.TODO(), netargs)
+// 	if err != nil {
+// 		res.Skip("Cannot retrieve network list")
+// 		return
+// 	}
+// 	for _, network := range networks {
+// 		if network.Name == "bridge" {
+// 			if network.Options["com.docker.network.bridge.enable_icc"] == "true" {
+// 				res.Status = "WARN"
+// 				return
+// 			}
+// 		}
+// 	}
+// 	res.Pass()
+// 	return
+// }
 
 func CheckLoggingLevel(t Target) (res Result) {
 	res.Name = "2.2 Set the logging level"

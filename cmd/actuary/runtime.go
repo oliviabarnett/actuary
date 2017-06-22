@@ -8,11 +8,11 @@ package actuary
 
 import (
 	"fmt"
-	"log"
+	//"log"
 	"strconv"
 	"strings"
 
-	"golang.org/x/net/context"
+	//"golang.org/x/net/context"
 )
 
 func CheckAppArmor(t Target) (res Result) {
@@ -106,35 +106,35 @@ func CheckSensitiveDirs(t Target) (res Result) {
 	return
 }
 
-func CheckSSHRunning(t Target) (res Result) {
-	var badContainers []string
-	res.Name = "5.6 Do not run ssh within containers"
-	if !t.Containers.Running() {
-		res.Skip("No running containers")
-		return
-	}
-	for _, container := range t.Containers {
-		procs, err := t.Client.ContainerTop(context.TODO(), container.ID, []string{})
-		if err != nil {
-			log.Printf("unable to retrieve proc list for container %s: %v", container.ID, err)
-		}
-		//proc fields are [UID PID PPID C STIME TTY TIME CMD]
-		for _, proc := range procs.Processes {
-			procname := proc[3]
-			if strings.Contains(procname, "ssh") {
-				badContainers = append(badContainers, container.ID)
-			}
-		}
-	}
-	if len(badContainers) == 0 {
-		res.Pass()
-	} else {
-		output := fmt.Sprintf("Containers running SSH service: %s",
-			badContainers)
-		res.Fail(output)
-	}
-	return
-}
+// func CheckSSHRunning(t Target) (res Result) {
+// 	var badContainers []string
+// 	res.Name = "5.6 Do not run ssh within containers"
+// 	if !t.Containers.Running() {
+// 		res.Skip("No running containers")
+// 		return
+// 	}
+// 	for _, container := range t.Containers {
+// 		procs, err := t.Client.ContainerTop(context.TODO(), container.ID, []string{})
+// 		if err != nil {
+// 			log.Printf("unable to retrieve proc list for container %s: %v", container.ID, err)
+// 		}
+// 		//proc fields are [UID PID PPID C STIME TTY TIME CMD]
+// 		for _, proc := range procs.Processes {
+// 			procname := proc[3]
+// 			if strings.Contains(procname, "ssh") {
+// 				badContainers = append(badContainers, container.ID)
+// 			}
+// 		}
+// 	}
+// 	if len(badContainers) == 0 {
+// 		res.Pass()
+// 	} else {
+// 		output := fmt.Sprintf("Containers running SSH service: %s",
+// 			badContainers)
+// 		res.Fail(output)
+// 	}
+// 	return
+// }
 
 func CheckPrivilegedPorts(t Target) (res Result) {
 	res.Name = "5.7 Do not map privileged ports within containers"

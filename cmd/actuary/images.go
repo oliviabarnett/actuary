@@ -35,7 +35,6 @@ func CheckContainerUser(t Target) (res Result) {
 		output := fmt.Sprintf("Containers running as root: %s", rootContainers)
 		res.Fail(output)
 	}
-
 	return res
 }
 

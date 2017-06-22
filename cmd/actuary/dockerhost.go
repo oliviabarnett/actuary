@@ -11,19 +11,21 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
+	//"os"
 	"strings"
 
-	"golang.org/x/net/context"
+	//"golang.org/x/net/context"
 
 	"github.com/drael/GOnetstat"
 	version "github.com/hashicorp/go-version"
 )
 
+
 //code borrowed from github.com/dockersecuritytools/batten
-func CheckSeparatePartion(t Target) (res Result) {
+func CheckSeparatePartition(t Target) (res Result) {
 	res.Name = "1.1 Create a separate partition for containers"
 	fstab := "/etc/fstab"
+
 	bytes, err := ioutil.ReadFile(fstab)
 	if err != nil {
 		log.Printf("Cannot read fstab")
@@ -32,6 +34,7 @@ func CheckSeparatePartion(t Target) (res Result) {
 	lines := strings.Split(string(bytes), "\n")
 	for _, line := range lines {
 		fields := strings.Fields(line)
+
 		if len(fields) > 1 && fields[1] == "/var/lib/docker" {
 			res.Pass()
 			return
@@ -77,24 +80,26 @@ func CheckRunningServices(t Target) (res Result) {
 	return
 }
 
-func CheckDockerVersion(t Target) (res Result) {
-	res.Name = "1.5 Keep Docker up to date"
-	verConstr := os.Getenv("VERSION")
-	info, err := t.Client.ServerVersion(context.TODO())
-	if err != nil {
-		log.Fatalf("Could not retrieve info for Docker host")
-	}
-	constraints, _ := version.NewConstraint(">= " + verConstr)
-	hostVersion, _ := version.NewVersion(info.Version)
-	if constraints.Check(hostVersion) {
-		res.Pass()
-	} else {
-		output := fmt.Sprintf("Host is using an outdated Docker server: %s ",
-			info.Version)
-		res.Fail(output)
-	}
-	return
-}
+
+//skip only test that calls t.Client
+// func CheckDockerVersion(t Target) (res Result) {
+// 	res.Name = "1.5 Keep Docker up to date"
+// 	verConstr := os.Getenv("VERSION")
+// 	info, err := t.Client.ServerVersion(context.TODO())
+// 	if err != nil {
+// 		log.Fatalf("Could not retrieve info for Docker host")
+// 	}
+// 	constraints, _ := version.NewConstraint(">= " + verConstr)
+// 	hostVersion, _ := version.NewVersion(info.Version)
+// 	if constraints.Check(hostVersion) {
+// 		res.Pass()
+// 	} else {
+// 		output := fmt.Sprintf("Host is using an outdated Docker server: %s ",
+// 			info.Version)
+// 		res.Fail(output)
+// 	}
+// 	return
+// }
 
 func CheckTrustedUsers(t Target) (res Result) {
 	var trustedUsers []string
