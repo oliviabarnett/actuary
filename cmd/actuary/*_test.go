@@ -5,17 +5,25 @@ package actuary
 
 
 import (
-	//"os"
+	//"os"\
+	"fmt"
+	//"encoding/json"
+	//"log"
+	//"io/ioutil"
 	"testing"
-	//"net/http" //Package http provides HTTP client and server implementations.
-	//"net/http/httptest" //Package httptest provides utilities for HTTP testing.
-
+	//"io"
+	"net/http" //Package http provides HTTP client and server implementations.
+	"net/http/httptest" //Package httptest provides utilities for HTTP testing.
+	"github.com/docker/engine-api/types"
 	//"github.com/docker/docker/api/types"
 	//"github.com/docker/docker/client"
 	//"github.com/diogomonica/actuary/actuary"
 
+	//"github.com/moby/moby"
+
 )
 
+//Mock Server
 //from https://gist.github.com/cyli/f565a5777183f664d78d7b4a2f3bb7be
 // type TestingClient struct {
 // 	cli    *client.Client
@@ -45,35 +53,52 @@ import (
 // 	}, nil
 // }
 
-// func testServer (t *testing.T, func()) { //inject a different response based on the test?
-// 	mux := http.NewServeMux()
-// 	mux.HandleFunc("/", func(http.ResponseWriter, *http.Request) {
-		
-		
-// 	})
+var n = types.NetworkResource{
+		Name: "none",
+		// ID: "none",
+		// Scope: "local",
+		// Driver: "null",
+		// EnableIPv6: false,
+		// IPAM: {
+		// 	Driver: "default",
+		// 	Config: [
+		// 		{
+		// 			Subnet: "subnet"
+		// 		}
+		// 	]
+		// },
+		// Internal: false,
+		// Attachable: false,		
+		// Containers: {
+		// 		EndpointResource: {}
+		// },
+		// Options: {},
+		// Labels: {},
+		}
 
-// 	server := httptest.NewServer(mux)
-// }
+
+
+func testServer (t *testing.T, call string) (*httptest.Server) { //inject a different response based on the test?
+	mux := http.NewServeMux()
+	mux.HandleFunc(
+		fmt.Sprintf(call), 
+		func(w http.ResponseWriter, r *http.Request){
+			fmt.Fprint(w, "hi")
+			// w.Header().Set("Content-Type", "application/json")
+			// j, _ := json.Marshal("TEST!!!")
+			// w.Write(j)
+			})
+
+	server := httptest.NewServer(mux)
+
+	return server
+}
 
 var testTarget, err = NewTarget()
-
-
-
 
 //1. host configuration
 
 func TestCheckSeparatePartition(t *testing.T){
-	//so I need a fake fstab?
-	// t.Log("Creating dummy fstab")
-	// fstab, _ := CreateFstab("/etc")
-	// data := `/var/lib/docker`
-	// fstab.Update(data)
-	
-	// if CheckSeparatePartition(actuary.NewTarget()) != "1.1 Create a separate partition for containers" {
-	// 	t.Errorf("Should be correctly partitioned")
-	// }
-
-	// dummy.Destroy()
 	
 }
 
@@ -95,12 +120,7 @@ func TestCheckRunningServices(t *testing.T) {
 	//not mac compatible
 }
 
-//func TestCheckDockerVersion(t *testing.T)  {
-
-//}
-
 func TestCheckTrustedUsers(t *testing.T) {
-	
 
 }
 
@@ -143,12 +163,32 @@ func TestAuditRunc(t *testing.T) {
 //2. Docker daemon configuration
 
 
+
 func TestRestrictNetTraffic(t *testing.T) {
-	
-}
+	//calls .NetworkList(context.TODO(), netargs), fake a response network
+
+	ts := testServer(t, "/")
+
+	// mux := http.NewServeMux()
+	// mux.HandleFunc("http://example.com/", func(w http.ResponseWriter, req *http.Request) {
+ 	//        fmt.Fprintf(w, "Welcome to the home page!")
+ 	//        log.Printf("XXXXXXXXX")
+	// })
+
+	res := RestrictNetTraffic(testTarget)
+
+	defer ts.Close()
+
+	t.Log(res)
+	if  res.Status != "PASS" {
+		t.Errorf("Net traffic restricted, should pass" )
+	}
+ }
 
 func TestCheckLoggingLevel(t *testing.T) {
-	
+
+
+
 }
 
 func TestCheckIpTables(t *testing.T) {

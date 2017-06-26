@@ -94,9 +94,9 @@ var checklist = map[string]Check{
 	"dockerdef_owner":      CheckDefaultOwner,
 	"dockerdef_perms":      CheckDefaultPerms,
 	//Docker Configuration
-	//"net_traffic":       RestrictNetTraffic,
+	"net_traffic":       RestrictNetTraffic,
 	"logging_level":     CheckLoggingLevel,
-	"allow_iptables":    CheckIpTables,
+	//"allow_iptables":    CheckIpTables,
 	"insecure_registry": CheckInsecureRegistry,
 	"aufs_driver":       CheckAufsDriver,
 	"tls_auth":          CheckTLSAuth,
@@ -177,34 +177,34 @@ func (l *ContainerList) runCheck(r *Result, f func(c ContainerInfo) bool, msg st
 
 //Target stores information regarding the audit's target Docker server
 type Target struct {
-	//Client     *client.Client
+	Client     *client.Client
 	Info       types.Info
 	Containers ContainerList
 }
 
 //NewTarget initiates a new Target struct
 func NewTarget() (a Target, err error) {
-	// a.Client, err = client.NewEnvClient()
+	 a.Client, err = client.NewEnvClient()
 
-	cli, err := client.NewEnvClient()
+	//cli, err := a.Cl.NewEnvClient()
 	if err != nil {
 		log.Fatalf("unable to create Docker client: %v\n", err)
 	}
 	
-	a.Info, err = cli.Info(context.TODO()) 
+	a.Info, err = a.Client.Info(context.TODO()) 
 
 	if err != nil {
-		log.Fatalf("unable to fetch Docker daemon info: %v\n", err)
+		log.Fatalf("unable to fetch Docker daemon INFO: %v\n", err)
 	}
 
-	err = a.createContainerList(cli)
+	err = a.createContainerList()
 
 	return
 }
 
-func (t *Target) createContainerList(cli *client.Client ) error {
+func (t *Target) createContainerList() error {
 	opts := types.ContainerListOptions{All: true} //used to be false
-	containers, err := cli.ContainerList(context.Background(), opts)
+	containers, err := t.Client.ContainerList(context.Background(), opts)
 	//log.Printf("XXXXXX %i", len(containers))
 
 	// if len(containers)==0 && t.Info.ContainersStopped > 0 {
@@ -216,13 +216,12 @@ func (t *Target) createContainerList(cli *client.Client ) error {
 	// var ctnr, err = cli.ContainerCreate(context.Background())
 	// 	cli.ContainerStart(context.Background(), ctnr.ID)
 
-
 	if err != nil {
 		log.Fatalf("unable to get container list: %v\n", err)
 	}
 	for _, cont := range containers {
 		entry := new(Container)
-		inspectData, _ := cli.ContainerInspect(context.TODO(), cont.ID)
+		inspectData, _ := t.Client.ContainerInspect(context.TODO(), cont.ID)
 		info := &ContainerInfo{inspectData}
 		entry.ID = cont.ID
 		entry.Info = *info

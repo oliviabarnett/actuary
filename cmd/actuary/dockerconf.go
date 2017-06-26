@@ -8,32 +8,33 @@ package actuary
 import (
 	"fmt"
 	"strings"
+	"log"
 
-	//"golang.org/x/net/context"
-
-	//"github.com/docker/docker/api/types"
+	"golang.org/x/net/context"
+	"github.com/docker/docker/api/types"
 )
 
-// func RestrictNetTraffic(t Target) (res Result) {
-// 	var netargs types.NetworkListOptions
-// 	res.Name = "2.1 Restrict network traffic between containers"
-
-// 	networks, err := t.Client.NetworkList(context.TODO(), netargs)
-// 	if err != nil {
-// 		res.Skip("Cannot retrieve network list")
-// 		return
-// 	}
-// 	for _, network := range networks {
-// 		if network.Name == "bridge" {
-// 			if network.Options["com.docker.network.bridge.enable_icc"] == "true" {
-// 				res.Status = "WARN"
-// 				return
-// 			}
-// 		}
-// 	}
-// 	res.Pass()
-// 	return
-// }
+func RestrictNetTraffic(t Target) (res Result) {
+	var netargs types.NetworkListOptions
+	res.Name = "2.1 Restrict network traffic between containers"
+	networks, err := t.Client.NetworkList(context.TODO(), netargs)
+	log.Printf("%v", networks[0])
+	//log.Printf("network list: %s", networks)
+	if err != nil {
+		res.Skip("Cannot retrieve network list")
+		return
+	}
+	for _, network := range networks {
+		if network.Name == "bridge" {
+			if network.Options["com.docker.network.bridge.enable_icc"] == "true" {
+				res.Status = "WARN"
+				return
+			}
+		}
+	}
+	res.Pass()
+	return
+}
 
 func CheckLoggingLevel(t Target) (res Result) {
 	res.Name = "2.2 Set the logging level"
@@ -52,21 +53,21 @@ func CheckLoggingLevel(t Target) (res Result) {
 	return
 }
 
-func CheckIpTables(t Target) (res Result) {
-	res.Name = "2.3 Allow Docker to make changes to iptables"
-	cmdLine, _ := getProcCmdline("docker")
-	for _, arg := range cmdLine {
-		if strings.Contains(arg, "--iptables") {
-			val := strings.Trim(strings.Split(arg, "=")[1], "\"")
-			if val != "false" {
-				res.Status = "WARN"
-				return res
-			}
-		}
-	}
-	res.Pass()
-	return
-}
+// func CheckIpTables(t Target) (res Result) {
+// 	res.Name = "2.3 Allow Docker to make changes to iptables"
+// 	cmdLine, _ := getProcCmdline("docker")
+// 	for _, arg := range cmdLine {
+// 		if strings3Contains(arg, "--iptables") {
+// 			val := strings.Trim(strings.Split(arg, "=")[1], "\"")
+// 			if val != "false" {
+// 				res.Status = "WARN"
+// 				return res
+// 			}
+// 		}
+// 	}
+// 	res.Pass()
+// 	return
+// }
 
 func CheckInsecureRegistry(t Target) (res Result) {
 	res.Name = "2.4 Do not use insecure registries"
