@@ -11,10 +11,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	//"os"
+	"os"
 	"strings"
 
-	//"golang.org/x/net/context"
+	"golang.org/x/net/context"
 
 	"github.com/drael/GOnetstat"
 	version "github.com/hashicorp/go-version"
@@ -50,6 +50,7 @@ func CheckKernelVersion(t Target) (res Result) {
 	info := t.Info
 	constraints, _ := version.NewConstraint(">= 3.10")
 	hostVersion, err := version.NewVersion(info.KernelVersion)
+
 	if err != nil {
 		// necessary fix for incompatible kernel versions (e.g. Fedora 23)
 		log.Print("Incompatible kernel version")
@@ -80,26 +81,31 @@ func CheckRunningServices(t Target) (res Result) {
 	return
 }
 
+func CheckDockerVersion(t Target) (res Result) {
+	res.Name = "1.5 Keep Docker up to date"
+	verConstr := os.Getenv("VERSION")
+	
+	if len(verConstr) == 0 {
+        verConstr = "17.03"
+    }
 
-//skip only test that calls t.Client
-// func CheckDockerVersion(t Target) (res Result) {
-// 	res.Name = "1.5 Keep Docker up to date"
-// 	verConstr := os.Getenv("VERSION")
-// 	info, err := t.Client.ServerVersion(context.TODO())
-// 	if err != nil {
-// 		log.Fatalf("Could not retrieve info for Docker host")
-// 	}
-// 	constraints, _ := version.NewConstraint(">= " + verConstr)
-// 	hostVersion, _ := version.NewVersion(info.Version)
-// 	if constraints.Check(hostVersion) {
-// 		res.Pass()
-// 	} else {
-// 		output := fmt.Sprintf("Host is using an outdated Docker server: %s ",
-// 			info.Version)
-// 		res.Fail(output)
-// 	}
-// 	return
-// }
+	info, err := t.Client.ServerVersion(context.TODO())
+	if err != nil {
+		log.Fatalf("Could not retrieve info for Docker host")
+	}
+	constraints, _ := version.NewConstraint(">= " + verConstr)
+
+
+	hostVersion, _ := version.NewVersion(info.Version)
+	if constraints.Check(hostVersion) {
+		res.Pass()
+	} else {
+		output := fmt.Sprintf("Host is using an outdated Docker server: %s ",
+			info.Version)
+		res.Fail(output)
+	}
+	return
+}
 
 func CheckTrustedUsers(t Target) (res Result) {
 	var trustedUsers []string

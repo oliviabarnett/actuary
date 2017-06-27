@@ -61,7 +61,7 @@ var checklist = map[string]Check{
 	"kernel_version":     CheckKernelVersion,
 	"separate_partition": CheckSeparatePartition,
 	"running_services":   CheckRunningServices,
-	//"server_version":     CheckDockerVersion,
+	"server_version":     CheckDockerVersion,
 	"trusted_users":      CheckTrustedUsers,
 	"audit_daemon":       AuditDockerDaemon,
 	"audit_lib":          AuditLibDocker,
@@ -116,7 +116,7 @@ var checklist = map[string]Check{
 	"kernel_capabilities":   CheckKernelCapabilities,
 	"privileged_containers": CheckPrivContainers,
 	"sensitive_dirs":        CheckSensitiveDirs,
-	//"ssh_running":           CheckSSHRunning,
+	"ssh_running":           CheckSSHRunning,
 	"privileged_ports":      CheckPrivilegedPorts,
 	"needed_ports":          CheckNeededPorts,
 	"host_net_mode":         CheckHostNetworkMode,
@@ -135,8 +135,8 @@ var checklist = map[string]Check{
 	"cgroup_usage":          CheckCgroupUsage,
 	"add_privs":             CheckAdditionalPrivs,
 	//Docker Security Operations
-	//"image_sprawl":     CheckImageSprawl,
-	//"container_sprawl": CheckContainerSprawl,
+	"image_sprawl":     CheckImageSprawl,
+	"container_sprawl": CheckContainerSprawl,
 }
 
 type ContainerInfo struct {

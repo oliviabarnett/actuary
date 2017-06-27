@@ -8,7 +8,6 @@ package actuary
 import (
 	"fmt"
 	"strings"
-	"log"
 
 	"golang.org/x/net/context"
 	"github.com/docker/docker/api/types"
@@ -18,7 +17,7 @@ func RestrictNetTraffic(t Target) (res Result) {
 	var netargs types.NetworkListOptions
 	res.Name = "2.1 Restrict network traffic between containers"
 	networks, err := t.Client.NetworkList(context.TODO(), netargs)
-	log.Printf("%v", networks[0])
+	//log.Printf("%v", networks[0])
 	//log.Printf("network list: %s", networks)
 	if err != nil {
 		res.Skip("Cannot retrieve network list")

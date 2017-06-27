@@ -7,94 +7,74 @@ package actuary
 import (
 	//"os"\
 	"fmt"
-	//"encoding/json"
+	"encoding/json"
 	//"log"
 	//"io/ioutil"
 	"testing"
+	"strconv"
 	//"io"
 	"net/http" //Package http provides HTTP client and server implementations.
 	"net/http/httptest" //Package httptest provides utilities for HTTP testing.
 	"github.com/docker/engine-api/types"
 	//"github.com/docker/docker/api/types"
-	//"github.com/docker/docker/client"
+	"github.com/docker/docker/client"
+	"github.com/docker/docker/api"
+	//"github.com/gorilla/mux"
 	//"github.com/diogomonica/actuary/actuary"
 
-	//"github.com/moby/moby"
 
 )
 
-//Mock Server
-//from https://gist.github.com/cyli/f565a5777183f664d78d7b4a2f3bb7be
-// type TestingClient struct {
-// 	cli    *client.Client
-// 	name   string
-// 	labels []string
-// 	uuid   string
-// }
+//variables for tests
 
-// func GetClient() (*client.Client, error) {
-// 	cli, err := client.NewClient(testServer().URL) // <-- fix. Used to be NewEnvClient
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return cli, nil
-// }
-
-// func NewTestingClient(name string, labels ...string) (*TestingClient, error) {
-// 	client, err := GetClient()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return &TestingClient{
-// 		cli:    client,
-// 		name:   name,
-// 		labels: labels,
-// 		uuid:   UUID(),
-// 	}, nil
-// }
-
-var n = types.NetworkResource{
-		Name: "none",
-		// ID: "none",
-		// Scope: "local",
-		// Driver: "null",
-		// EnableIPv6: false,
-		// IPAM: {
-		// 	Driver: "default",
-		// 	Config: [
-		// 		{
-		// 			Subnet: "subnet"
-		// 		}
-		// 	]
-		// },
-		// Internal: false,
-		// Attachable: false,		
-		// Containers: {
-		// 		EndpointResource: {}
-		// },
-		// Options: {},
-		// Labels: {},
-		}
-
-
-
-func testServer (t *testing.T, call string) (*httptest.Server) { //inject a different response based on the test?
-	mux := http.NewServeMux()
-	mux.HandleFunc(
-		fmt.Sprintf(call), 
-		func(w http.ResponseWriter, r *http.Request){
-			fmt.Fprint(w, "hi")
-			// w.Header().Set("Content-Type", "application/json")
-			// j, _ := json.Marshal("TEST!!!")
-			// w.Write(j)
-			})
-
-	server := httptest.NewServer(mux)
-
-	return server
+type callPairing struct{
+	call string
+	obj []byte
 }
 
+type imageList struct{
+	images []types.Image
+}
+
+func (list imageList) populateImageList(size int) (imageList){
+	list.images = nil
+	var img types.Image
+	for i := 0; i < size; i++{
+		img = types.Image{ID: strconv.Itoa(i)}
+		list.images = append(list.images, img)
+	}
+
+	return list
+}
+
+
 var testTarget, err = NewTarget()
+
+func testServer (t *testing.T, pairings ...callPairing) (server *httptest.Server) { //inject a different response based on the test?
+
+	mux := http.NewServeMux()
+
+	for _, pair := range pairings {
+		mux.HandleFunc(
+			fmt.Sprintf("/v1.26%s", pair.call),
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request){
+				w.Header().Set("Content-Type", "application/json")
+				w.Write(pair.obj)
+				//log.Printf("Req: %s %s\n", r.Host, r.URL.Path)
+		}))
+	}
+	server = httptest.NewServer(mux)
+
+	//manipulate testTarget client to point to server
+	testTarget.Client, err = client.NewClient(server.URL, api.DefaultVersion, nil, nil)
+
+
+	if err != nil {
+		t.Errorf("Could not manipulate test target client.")
+		return 
+	}
+	return 
+}
 
 //1. host configuration
 
@@ -119,6 +99,42 @@ func TestCheckKernelVersion(t *testing.T) {
 func TestCheckRunningServices(t *testing.T) {
 	//not mac compatible
 }
+
+func TestCheckDockerVersion(t *testing.T) {
+	
+	var ver = types.Version{
+		Version: "20000",
+		Os: "linux",
+		GoVersion: "go1.7.5",
+		GitCommit: "deadbee",
+	}
+
+	for i := 0; i< 2; i++{
+		vJSON, err := json.Marshal(ver)
+
+		if err != nil {
+			t.Errorf("Could not convert version to json.")
+		}
+
+		p := callPairing{"/version", vJSON}
+
+		ts := testServer(t, p)
+		
+		res := CheckDockerVersion(testTarget)
+
+		defer ts.Close()
+
+		if i == 0 && res.Status != "PASS" {
+			t.Errorf("Host using the correct Docker server, should pass" )
+		}
+		if i == 1 && res.Status == "PASS"{
+			t.Errorf("Host not using the correct Docker server, should not pass" )
+		}
+
+		ver.Version = "0"
+	}
+
+ }
 
 func TestCheckTrustedUsers(t *testing.T) {
 
@@ -162,32 +178,45 @@ func TestAuditRunc(t *testing.T) {
 
 //2. Docker daemon configuration
 
-
-
 func TestRestrictNetTraffic(t *testing.T) {
 	//calls .NetworkList(context.TODO(), netargs), fake a response network
+	
+	var network = []types.NetworkResource{{
+			Name: "bridge",
+			Options: map[string]string{"com.docker.network.bridge.enable_icc": "false"},
+	}}
 
-	ts := testServer(t, "/")
 
-	// mux := http.NewServeMux()
-	// mux.HandleFunc("http://example.com/", func(w http.ResponseWriter, req *http.Request) {
- 	//        fmt.Fprintf(w, "Welcome to the home page!")
- 	//        log.Printf("XXXXXXXXX")
-	// })
 
-	res := RestrictNetTraffic(testTarget)
+	for i := 0; i< 2; i++{
+		nJSON, err := json.Marshal(network)
 
-	defer ts.Close()
+		if err != nil {
+			t.Errorf("Could not convert network to json.")
+		}
 
-	t.Log(res)
-	if  res.Status != "PASS" {
-		t.Errorf("Net traffic restricted, should pass" )
+		p := callPairing{"/networks", nJSON}
+
+		ts := testServer(t, p)
+		
+		res := RestrictNetTraffic(testTarget)
+
+		defer ts.Close()
+
+		if i == 0 && res.Status != "PASS" {
+			t.Errorf("Net traffic restricted, should pass" )
+		}
+		if i == 1 && res.Status == "PASS"{
+			t.Errorf("Net traffic not restricted, should not pass" )
+		}
+
+		//test fail case
+		network[0].Options["com.docker.network.bridge.enable_icc"] = "true"
 	}
+
  }
 
 func TestCheckLoggingLevel(t *testing.T) {
-
-
 
 }
 
@@ -321,6 +350,46 @@ func TestCheckSensitiveDirs(t *testing.T) {
 	
 }
 
+func TestCheckSSHRunning(t *testing.T) {
+// GET "/containers/{name:.*}/top"
+	var processList = types.ContainerProcessList{
+					Titles: []string{"UID", "PID","PPID","C","STIME","TTY","TIME","CMD"},
+					Processes: [][]string{{"root","13642","882","0","17:03","pts/0","00:00:00","/bin/bash"}, 
+										{"root", "13735","13642","0","17:06","pts/0","00:00:00","sleep 10"}},
+					}
+
+	temp := testTarget.Containers
+	testTarget.Containers =  ContainerList{testTarget.Containers[0]}
+
+	for i := 0; i< 2; i++{
+		pJSON, err := json.Marshal(processList)
+
+		if err != nil {
+			t.Errorf("Could not convert process list to json.")
+		}
+
+		p := callPairing{"/containers/" + testTarget.Containers[0].ID +"/top", pJSON}
+
+		ts := testServer(t, p)
+	
+		res := CheckSSHRunning(testTarget)
+
+		defer ts.Close()
+
+		if i == 0 && res.Status != "PASS" {
+			t.Errorf("No containers running SSH service, should pass" )
+		}
+		if i == 1 && res.Status == "PASS"{
+			t.Errorf("Container running SSH service, should not pass" )
+		}
+		
+		//test fail case
+		processList.Processes[0][3] = "ssh"
+	}
+
+		testTarget.Containers = temp
+ }
+
 func TestCheckPrivilegedPorts(t *testing.T) {
 	
 }
@@ -389,6 +458,56 @@ func TestCheckAdditionalPrivs(t *testing.T) {
 	
 }
 
-
-
 //6. Docker Security Operations
+
+func TestCheckImageSprawl(t *testing.T) {
+//GET /images/json
+	var imgList imageList
+
+	imgs := imgList.populateImageList(2).images
+
+	container1 := types.Container{ImageID: "1"}
+	container2 := types.Container{ImageID: "2"}
+
+	containerLst := []types.Container{container1, container2}
+
+	for i := 0; i< 2; i++{
+		imagesJSON, err := json.Marshal(imgs)
+		containerJSON, err := json.Marshal(containerLst)
+
+		if err != nil {
+			t.Errorf("Could not convert process list to json.")
+		}
+
+		p1 := callPairing{ "/containers/json", containerJSON}
+		p2 := callPairing{ "/images/json", imagesJSON}
+
+		ts := testServer(t, p1, p2)
+		
+		res := CheckImageSprawl(testTarget)
+
+		defer ts.Close()
+
+		if i == 0 && res.Status != "PASS" {
+			t.Errorf("Correct amount of images, should pass." )
+		}
+		if i == 1 && res.Status == "PASS"{
+			t.Errorf("Over 100 images, should not pass." )
+		}
+
+		//test fail case
+		imgs = imgList.populateImageList(105).images
+	}
+}
+
+func TestCheckContainerSprawl(t *testing.T) {
+
+}
+
+
+
+
+
+
+
+
