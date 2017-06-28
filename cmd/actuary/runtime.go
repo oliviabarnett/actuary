@@ -8,7 +8,7 @@ package actuary
 
 import (
 	"fmt"
-	//"log"
+	"log"
 	"strconv"
 	"strings"
 
@@ -147,6 +147,7 @@ func CheckPrivilegedPorts(t Target) (res Result) {
 	privPorts := func(c ContainerInfo) bool {
 		ports := c.NetworkSettings.Ports
 		for _, port := range ports {
+			log.Printf("PORT: %v", port)
 			for _, portmap := range port {
 				hostPort, _ := strconv.Atoi(portmap.HostPort)
 				if hostPort < 1024 {
@@ -205,6 +206,7 @@ func CheckMemoryLimits(t Target) (res Result) {
 		res.Skip("No running containers")
 		return
 	}
+	
 	memLim := func(c ContainerInfo) bool {
 		if c.HostConfig.Memory != 0 {
 			return true
