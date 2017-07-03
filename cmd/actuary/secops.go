@@ -70,9 +70,9 @@ func CheckContainerSprawl(t Target) (res Result) {
 
 	diff = len(allContainers) - len(runContainers)
 
-	log.Printf("ALL: %v", len(allContainers))
-	log.Printf("RUNNING: %v", len(runContainers))
-	log.Printf("DIFF: %v", diff)
+	//log.Printf("ALL: %v", len(allContainers))
+	//log.Printf("RUNNING: %v", len(runContainers))
+	//log.Printf("DIFF: %v", diff)
 
 
 

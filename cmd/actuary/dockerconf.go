@@ -8,6 +8,7 @@ package actuary
 import (
 	"fmt"
 	"strings"
+	"log"
 
 	"golang.org/x/net/context"
 	"github.com/docker/docker/api/types"
@@ -38,10 +39,14 @@ func RestrictNetTraffic(t Target) (res Result) {
 func CheckLoggingLevel(t Target) (res Result) {
 	res.Name = "2.2 Set the logging level"
 	cmdLine, _ := getProcCmdline("docker")
+	//log.Printf("CMDLINE: %s", cmdLine)
 	for _, arg := range cmdLine {
+		log.Printf("ARG: %s", arg)
 		if strings.Contains(arg, "--log-level") {
 			level := strings.Trim(strings.Split(arg, "=")[1], "\"")
+
 			if level != "info" {
+				
 				output := "Docker daemon log level should be set to \"info\""
 				res.Fail(output)
 				return

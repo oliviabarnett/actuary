@@ -8,7 +8,7 @@ package actuary
 
 import (
 	"fmt"
-	"log"
+	//"log"
 	"strconv"
 	"strings"
 
@@ -93,7 +93,7 @@ func CheckSensitiveDirs(t Target) (res Result) {
 	sensitiveDirs := func(c ContainerInfo) bool {
 		mounts := c.Mounts
 		dirList := []string{"/dev", "/etc", "/lib", "/proc", "/sys", "/usr"}
-		for _, mount := range mounts {
+		for _, mount := range mounts {			
 			for _, dir := range dirList {
 				if strings.HasPrefix(mount.Source, dir) && mount.RW == true {
 					return false
@@ -146,8 +146,9 @@ func CheckPrivilegedPorts(t Target) (res Result) {
 	}
 	privPorts := func(c ContainerInfo) bool {
 		ports := c.NetworkSettings.Ports
+		//log.Printf("PORT: %v", ports)
+
 		for _, port := range ports {
-			log.Printf("PORT: %v", port)
 			for _, portmap := range port {
 				hostPort, _ := strconv.Atoi(portmap.HostPort)
 				if hostPort < 1024 {

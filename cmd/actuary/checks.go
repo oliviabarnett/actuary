@@ -19,6 +19,10 @@ import (
 	"github.com/shirou/gopsutil/process"
 )
 
+//Global variables for testing
+var auditCtlVar string = "auditctl"
+
+
 //Result objects are returned from Check functions
 type Result struct {
 	Name   string
@@ -287,9 +291,13 @@ func getCmdOption(args []string, opt string) (exist bool, val string) {
 
 //Searches for a filename in given dirs
 func lookupFile(filename string, dirs []string) (info os.FileInfo, err error) {
+	//log.Printf("DIR: %s \n", dirs)
+
 	for _, path := range dirs {
 		fullPath := filepath.Join(path, filename)
+		//log.Printf("FULLPATH: %s \n", fullPath)
 		info, err = os.Stat(fullPath)
+		//log.Printf("INFO: %s \n", info)
 		if err == nil {
 			return
 		}
@@ -300,6 +308,10 @@ func lookupFile(filename string, dirs []string) (info os.FileInfo, err error) {
 func hasLeastPerms(info os.FileInfo, safePerms uint32) (isLeast bool,
 	perms os.FileMode) {
 	mode := info.Mode().Perm()
+
+	//log.Printf("MODE %v:", uint32(mode))
+	//log.Printf("SAFEPERMS %v:", safePerms)
+
 	if uint32(mode) <= safePerms {
 		isLeast = true
 	} else {
@@ -347,7 +359,11 @@ func getFileOwner(info os.FileInfo) (uid, gid string) {
 
 //Looks for the path of an executable, runs it with options/args and returns output
 func getCmdOutput(exe string, opts ...string) (output []byte, err error) {
+
 	exePath, err := exec.LookPath(exe)
+	//log.Printf("EXE PATH: %v", exePath)
+	//log.Printf("New path: %s", os.Getenv("PATH"))
+
 	if err != nil {
 		log.Printf("could not find executable: %v", err)
 		return
@@ -361,8 +377,11 @@ func getCmdOutput(exe string, opts ...string) (output []byte, err error) {
 }
 
 //Helper function to check rules in auditctl
+//If expected output changes, make sure to change the data in testdata
 func checkAuditRule(rule string) *auditdError {
+
 	output, err := getCmdOutput("auditctl", "-l")
+	//log.Printf("OUTPUT: %s", output)
 	if err != nil {
 		return &auditdError{err, "Unable to retrieve rule list", 1}
 	}

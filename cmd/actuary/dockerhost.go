@@ -19,14 +19,26 @@ import (
 	"github.com/drael/GOnetstat"
 	version "github.com/hashicorp/go-version"
 )
+// Notes:
+	//Global variable def
+	//can look at unexported fields in test.go
+	//before start test, change variable
+	//directory called testdata
+	//testdata/whatever
 
-
+//GLOBAL VARIABLES:
+	var(
+		fstab = "/etc/fstab"
+		groupFile = "/etc/group"
+	)
 //code borrowed from github.com/dockersecuritytools/batten
-func CheckSeparatePartition(t Target) (res Result) {
+func  CheckSeparatePartition(t Target) (res Result) {
 	res.Name = "1.1 Create a separate partition for containers"
-	fstab := "/etc/fstab"
+	//fstab := "/etc/fstab" 
+	
 
 	bytes, err := ioutil.ReadFile(fstab)
+
 	if err != nil {
 		log.Printf("Cannot read fstab")
 		return res
@@ -34,7 +46,6 @@ func CheckSeparatePartition(t Target) (res Result) {
 	lines := strings.Split(string(bytes), "\n")
 	for _, line := range lines {
 		fields := strings.Fields(line)
-
 		if len(fields) > 1 && fields[1] == "/var/lib/docker" {
 			res.Pass()
 			return
@@ -110,7 +121,7 @@ func CheckDockerVersion(t Target) (res Result) {
 func CheckTrustedUsers(t Target) (res Result) {
 	var trustedUsers []string
 	res.Name = "1.6 Only allow trusted users to control Docker daemon"
-	groupFile := "/etc/group"
+	//groupFile := "/etc/group"
 	content, err := ioutil.ReadFile(groupFile)
 	if err != nil {
 		log.Panicf("Could not read %s", groupFile)
