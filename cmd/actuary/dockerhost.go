@@ -11,22 +11,34 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	//"os"
+	"os"
 	"strings"
 
-	//"golang.org/x/net/context"
+	"golang.org/x/net/context"
 
 	"github.com/drael/GOnetstat"
 	version "github.com/hashicorp/go-version"
 )
+// Notes:
+	//Global variable def
+	//can look at unexported fields in test.go
+	//before start test, change variable
+	//directory called testdata
+	//testdata/whatever
 
-
+//GLOBAL VARIABLES:
+	var(
+		fstab = "/etc/fstab"
+		groupFile = "/etc/group"
+	)
 //code borrowed from github.com/dockersecuritytools/batten
-func CheckSeparatePartition(t Target) (res Result) {
+func  CheckSeparatePartition(t Target) (res Result) {
 	res.Name = "1.1 Create a separate partition for containers"
-	fstab := "/etc/fstab"
+	//fstab := "/etc/fstab" 
+	
 
 	bytes, err := ioutil.ReadFile(fstab)
+
 	if err != nil {
 		log.Printf("Cannot read fstab")
 		return res
@@ -34,7 +46,6 @@ func CheckSeparatePartition(t Target) (res Result) {
 	lines := strings.Split(string(bytes), "\n")
 	for _, line := range lines {
 		fields := strings.Fields(line)
-
 		if len(fields) > 1 && fields[1] == "/var/lib/docker" {
 			res.Pass()
 			return
@@ -50,6 +61,7 @@ func CheckKernelVersion(t Target) (res Result) {
 	info := t.Info
 	constraints, _ := version.NewConstraint(">= 3.10")
 	hostVersion, err := version.NewVersion(info.KernelVersion)
+
 	if err != nil {
 		// necessary fix for incompatible kernel versions (e.g. Fedora 23)
 		log.Print("Incompatible kernel version")
@@ -80,31 +92,36 @@ func CheckRunningServices(t Target) (res Result) {
 	return
 }
 
+func CheckDockerVersion(t Target) (res Result) {
+	res.Name = "1.5 Keep Docker up to date"
+	verConstr := os.Getenv("VERSION")
+	
+	if len(verConstr) == 0 {
+        verConstr = "17.03"
+    }
 
-//skip only test that calls t.Client
-// func CheckDockerVersion(t Target) (res Result) {
-// 	res.Name = "1.5 Keep Docker up to date"
-// 	verConstr := os.Getenv("VERSION")
-// 	info, err := t.Client.ServerVersion(context.TODO())
-// 	if err != nil {
-// 		log.Fatalf("Could not retrieve info for Docker host")
-// 	}
-// 	constraints, _ := version.NewConstraint(">= " + verConstr)
-// 	hostVersion, _ := version.NewVersion(info.Version)
-// 	if constraints.Check(hostVersion) {
-// 		res.Pass()
-// 	} else {
-// 		output := fmt.Sprintf("Host is using an outdated Docker server: %s ",
-// 			info.Version)
-// 		res.Fail(output)
-// 	}
-// 	return
-// }
+	info, err := t.Client.ServerVersion(context.TODO())
+	if err != nil {
+		log.Fatalf("Could not retrieve info for Docker host")
+	}
+	constraints, _ := version.NewConstraint(">= " + verConstr)
+
+
+	hostVersion, _ := version.NewVersion(info.Version)
+	if constraints.Check(hostVersion) {
+		res.Pass()
+	} else {
+		output := fmt.Sprintf("Host is using an outdated Docker server: %s ",
+			info.Version)
+		res.Fail(output)
+	}
+	return
+}
 
 func CheckTrustedUsers(t Target) (res Result) {
 	var trustedUsers []string
 	res.Name = "1.6 Only allow trusted users to control Docker daemon"
-	groupFile := "/etc/group"
+	//groupFile := "/etc/group"
 	content, err := ioutil.ReadFile(groupFile)
 	if err != nil {
 		log.Panicf("Could not read %s", groupFile)

@@ -19,6 +19,10 @@ import (
 	"github.com/shirou/gopsutil/process"
 )
 
+//Global variables for testing
+var auditCtlVar string = "auditctl"
+
+
 //Result objects are returned from Check functions
 type Result struct {
 	Name   string
@@ -61,7 +65,7 @@ var checklist = map[string]Check{
 	"kernel_version":     CheckKernelVersion,
 	"separate_partition": CheckSeparatePartition,
 	"running_services":   CheckRunningServices,
-	//"server_version":     CheckDockerVersion,
+	"server_version":     CheckDockerVersion,
 	"trusted_users":      CheckTrustedUsers,
 	"audit_daemon":       AuditDockerDaemon,
 	"audit_lib":          AuditLibDocker,
@@ -94,9 +98,9 @@ var checklist = map[string]Check{
 	"dockerdef_owner":      CheckDefaultOwner,
 	"dockerdef_perms":      CheckDefaultPerms,
 	//Docker Configuration
-	//"net_traffic":       RestrictNetTraffic,
+	"net_traffic":       RestrictNetTraffic,
 	"logging_level":     CheckLoggingLevel,
-	"allow_iptables":    CheckIpTables,
+	//"allow_iptables":    CheckIpTables,
 	"insecure_registry": CheckInsecureRegistry,
 	"aufs_driver":       CheckAufsDriver,
 	"tls_auth":          CheckTLSAuth,
@@ -116,7 +120,7 @@ var checklist = map[string]Check{
 	"kernel_capabilities":   CheckKernelCapabilities,
 	"privileged_containers": CheckPrivContainers,
 	"sensitive_dirs":        CheckSensitiveDirs,
-	//"ssh_running":           CheckSSHRunning,
+	"ssh_running":           CheckSSHRunning,
 	"privileged_ports":      CheckPrivilegedPorts,
 	"needed_ports":          CheckNeededPorts,
 	"host_net_mode":         CheckHostNetworkMode,
@@ -135,8 +139,8 @@ var checklist = map[string]Check{
 	"cgroup_usage":          CheckCgroupUsage,
 	"add_privs":             CheckAdditionalPrivs,
 	//Docker Security Operations
-	//"image_sprawl":     CheckImageSprawl,
-	//"container_sprawl": CheckContainerSprawl,
+	"image_sprawl":     CheckImageSprawl,
+	"container_sprawl": CheckContainerSprawl,
 }
 
 type ContainerInfo struct {
@@ -177,34 +181,34 @@ func (l *ContainerList) runCheck(r *Result, f func(c ContainerInfo) bool, msg st
 
 //Target stores information regarding the audit's target Docker server
 type Target struct {
-	//Client     *client.Client
+	Client     *client.Client
 	Info       types.Info
 	Containers ContainerList
 }
 
 //NewTarget initiates a new Target struct
 func NewTarget() (a Target, err error) {
-	// a.Client, err = client.NewEnvClient()
+	 a.Client, err = client.NewEnvClient()
 
-	cli, err := client.NewEnvClient()
+	//cli, err := a.Cl.NewEnvClient()
 	if err != nil {
 		log.Fatalf("unable to create Docker client: %v\n", err)
 	}
 	
-	a.Info, err = cli.Info(context.TODO()) 
+	a.Info, err = a.Client.Info(context.TODO()) 
 
 	if err != nil {
-		log.Fatalf("unable to fetch Docker daemon info: %v\n", err)
+		log.Fatalf("unable to fetch Docker daemon INFO: %v\n", err)
 	}
 
-	err = a.createContainerList(cli)
+	err = a.createContainerList()
 
 	return
 }
 
-func (t *Target) createContainerList(cli *client.Client ) error {
+func (t *Target) createContainerList() error {
 	opts := types.ContainerListOptions{All: true} //used to be false
-	containers, err := cli.ContainerList(context.Background(), opts)
+	containers, err := t.Client.ContainerList(context.Background(), opts)
 	//log.Printf("XXXXXX %i", len(containers))
 
 	// if len(containers)==0 && t.Info.ContainersStopped > 0 {
@@ -216,13 +220,12 @@ func (t *Target) createContainerList(cli *client.Client ) error {
 	// var ctnr, err = cli.ContainerCreate(context.Background())
 	// 	cli.ContainerStart(context.Background(), ctnr.ID)
 
-
 	if err != nil {
 		log.Fatalf("unable to get container list: %v\n", err)
 	}
 	for _, cont := range containers {
 		entry := new(Container)
-		inspectData, _ := cli.ContainerInspect(context.TODO(), cont.ID)
+		inspectData, _ := t.Client.ContainerInspect(context.TODO(), cont.ID)
 		info := &ContainerInfo{inspectData}
 		entry.ID = cont.ID
 		entry.Info = *info
@@ -288,9 +291,13 @@ func getCmdOption(args []string, opt string) (exist bool, val string) {
 
 //Searches for a filename in given dirs
 func lookupFile(filename string, dirs []string) (info os.FileInfo, err error) {
+	//log.Printf("DIR: %s \n", dirs)
+
 	for _, path := range dirs {
 		fullPath := filepath.Join(path, filename)
+		//log.Printf("FULLPATH: %s \n", fullPath)
 		info, err = os.Stat(fullPath)
+		//log.Printf("INFO: %s \n", info)
 		if err == nil {
 			return
 		}
@@ -301,6 +308,10 @@ func lookupFile(filename string, dirs []string) (info os.FileInfo, err error) {
 func hasLeastPerms(info os.FileInfo, safePerms uint32) (isLeast bool,
 	perms os.FileMode) {
 	mode := info.Mode().Perm()
+
+	//log.Printf("MODE %v:", uint32(mode))
+	//log.Printf("SAFEPERMS %v:", safePerms)
+
 	if uint32(mode) <= safePerms {
 		isLeast = true
 	} else {
@@ -348,7 +359,11 @@ func getFileOwner(info os.FileInfo) (uid, gid string) {
 
 //Looks for the path of an executable, runs it with options/args and returns output
 func getCmdOutput(exe string, opts ...string) (output []byte, err error) {
+
 	exePath, err := exec.LookPath(exe)
+	//log.Printf("EXE PATH: %v", exePath)
+	//log.Printf("New path: %s", os.Getenv("PATH"))
+
 	if err != nil {
 		log.Printf("could not find executable: %v", err)
 		return
@@ -362,8 +377,11 @@ func getCmdOutput(exe string, opts ...string) (output []byte, err error) {
 }
 
 //Helper function to check rules in auditctl
+//If expected output changes, make sure to change the data in testdata
 func checkAuditRule(rule string) *auditdError {
+
 	output, err := getCmdOutput("auditctl", "-l")
+	//log.Printf("OUTPUT: %s", output)
 	if err != nil {
 		return &auditdError{err, "Unable to retrieve rule list", 1}
 	}
