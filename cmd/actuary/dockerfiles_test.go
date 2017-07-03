@@ -3,44 +3,35 @@ package actuary
 
 import (
 	"os"
-	//"fmt"
 	"path/filepath"
-	//"encoding/json"
-	//"log"
-	//"io/ioutil"
 	"testing"
 	"os/user"
-	//"syscall"
-
-	//"strconv"
-	//"io"
-	//"net/http" //Package http provides HTTP client and server implementations.
-	//"net/http/httptest" //Package httptest provides utilities for HTTP testing.
-	//"github.com/docker/engine-api/types"
-	//"github.com/docker/go-connections/nat"	
-	//"github.com/docker/docker/api/types"
-	//"github.com/docker/docker/client"
-	//"github.com/docker/docker/api"
-	//"github.com/gorilla/mux"
-	//"github.com/diogomonica/actuary/actuary"
-
-
 )
 
 //3. Docker daemon configuration files
 //mounting host directory method?
 
-func changeSystemDPath() {
-	rootPath, _ := os.Getwd()
-	path := filepath.Join(rootPath, "testdata")
+//For the functions that use systemdPaths, change the global variable to point to the testdata folder
+func changeSystemDPath(t *testing.T) {
+
+	path, err := filepath.Abs("testdata")
+	if err != nil {
+		t.Errorf("Could not get current user information %s", err)
+	} 
 	systemdPaths = []string{path}
 }
 
 func helperCheckOwner(t *testing.T, f func(tg Target) Result, err1 string, err2 string, gid bool) {
+	//Covers all functions that involve checking the file's owner.
+	//Sets the root user to be the test file's current user for the pass test case and to be the root on the fail case. 
+	//Did it this way because could not make the test files created be "owned" by root 
+	//potential problem: If the test files' owner is actually root -- is this possible with this setup?
 
 	usr, err := user.Current() // change root user to current user for positive test case
 	refUser = usr.Name
 
+
+	//Only some of the functions test the gid, additional test signified by bool input
 	if gid {
 		gid, err := user.LookupGroupId(usr.Gid)
 		refGroup = gid.Name
@@ -76,6 +67,9 @@ func helperCheckOwner(t *testing.T, f func(tg Target) Result, err1 string, err2 
 }
 
 func helperCheckPerms(t *testing.T, fi os.FileInfo, f func(tg Target) Result, err1 string, err2 string) {
+	//Covers all functions that involve checking the file's permissions
+	//Sets the reference permissions in the original functions to the test files' permissions for the pass case
+	//Same potential problem as above
 	
 	mode := fi.Mode().Perm()
 
@@ -105,14 +99,14 @@ func helperCheckPerms(t *testing.T, fi os.FileInfo, f func(tg Target) Result, er
 
 func TestCheckServiceOwner(t *testing.T) {
 	
-	changeSystemDPath()
+	changeSystemDPath(t)
 
 	helperCheckOwner(t, CheckServiceOwner, "Root set to docker.service owner, should pass", "Docker.service owner is not set to root, should not pass.", false)
 }
 
 func TestCheckServicePerms(t *testing.T) {
 	
-	changeSystemDPath()
+	changeSystemDPath(t)
 
 	fileInfo, err := lookupFile("docker.service", systemdPaths)
 
@@ -128,14 +122,15 @@ func TestCheckServicePerms(t *testing.T) {
 
 func TestCheckSocketOwner(t *testing.T) {
 	
-	changeSystemDPath()
+	changeSystemDPath(t)
 
 	helperCheckOwner(t, CheckSocketOwner, "Root set to docker.socket owner, should pass", "Docker.socket owner not set, should not pass.", false)
 
 }
 
 func TestCheckSocketPerms(t *testing.T) {
-	changeSystemDPath()
+	
+	changeSystemDPath(t)
 
 	fileInfo, err := lookupFile("docker.socket", systemdPaths)
 	
@@ -150,6 +145,7 @@ func TestCheckSocketPerms(t *testing.T) {
 }
 
 func TestCheckDockerDirOwner(t *testing.T) {
+	
 	etcDocker, err = filepath.Abs("testdata/etc/docker")
 	
 	if err != nil {
@@ -185,6 +181,8 @@ func TestCheckDockerDirPerms(t *testing.T) {
 }
 
 func TestCheckRegistryCertOwner(t *testing.T) {
+
+	//Original function .ReadDir called on a relative path, seems wrong...
 
 	// loc, err := filepath.Abs("testdata/etc/docker/certs.d/certFolder")
 	// path := os.Getenv("PATH")
@@ -238,31 +236,149 @@ func TestCheckRegistryCertOwner(t *testing.T) {
 }
 
 func TestCheckRegistryCertPerms(t *testing.T) {
-
+ //Same problem as above
 }
 
 func TestCheckCACertOwner(t *testing.T) {
-	
+	//Following 7 tests are combinations of tests from dockerconf_test.go and other test functions within dockerfiles_test.go
+	//Insert dummy test file by replacing call to procSetUp
+	//PROBLEM: Using a file created and placed in an arbitrary folder (etcDocker) 
+	//because could not find the expected certPath value (nil currently). Shouldn't matter, but not ideal.
+
+	etcDocker, err = filepath.Abs("testdata/etc/docker")
+	if err != nil {
+		t.Errorf("Could not get testdata/etc/docker %s", err)
+	} 
+
+	procHelper = func(procname string, tlsOpt string) (val string){
+		val = etcDocker
+		return
+	}
+
+	helperCheckOwner(t, CheckCACertOwner, "Root:root is set to TLS CA certificate file ownership, should pass.", "Root:root is not set to TLS CA certificate file ownership, should not pass.", false)
+
+	//restore
+
+	procHelper = procSetUp
+	etcDocker = "etc/Docker"
 }
 
 func TestCheckCACertPerms(t *testing.T) {
+
+	etcDocker, err = filepath.Abs("testdata/etc/docker")
+	if err != nil {
+		t.Errorf("Could not get testdata/etc/docker %s", err)
+	} 
+
+	procHelper = func(procname string, tlsOpt string) (val string){
+		val = etcDocker
+		return
+	}
+
+	fileInfo, err := os.Stat(etcDocker)
 	
+	if err != nil {
+		t.Errorf("Could not get testdata/etc/docker file permissions %s", err)
+	} 
+
+	helperCheckPerms(t, fileInfo, CheckCACertPerms, "TLS CA certificate file permissions are set correctly, should pass", "File has less restrictive permissions than expected, should not pass.")
+
+	//restore
+
+	procHelper = procSetUp
+	etcDocker = "etc/Docker"
+	refPerms = 0444
 }
 
 func TestCheckServerCertOwner(t *testing.T) {
-	
+	etcDocker, err = filepath.Abs("testdata/etc/docker")
+	if err != nil {
+		t.Errorf("Could not get testdata/etc/docker %s", err)
+	} 
+
+	procHelper = func(procname string, tlsOpt string) (val string){
+		val = etcDocker
+		return
+	}
+
+	helperCheckOwner(t, CheckServerCertOwner, "Root:root is set to Docker server certificate file ownership, should pass.", "Root:root is not set to Docker server certificate file ownership, should not pass.", false)
+
+	//restore
+
+	procHelper = procSetUp
+	etcDocker = "etc/Docker"
 }
 
 func TestCheckServerCertPerms(t *testing.T) {
+	etcDocker, err = filepath.Abs("testdata/etc/docker")
+	if err != nil {
+		t.Errorf("Could not get testdata/etc/docker %s", err)
+	} 
+
+	procHelper = func(procname string, tlsOpt string) (val string){
+		val = etcDocker
+		return
+	}
+
+	fileInfo, err := os.Stat(etcDocker)
 	
+	if err != nil {
+		t.Errorf("Could not get testdata/etc/docker file permissions %s", err)
+	} 
+
+	helperCheckPerms(t, fileInfo, CheckServerCertPerms, "Docker server certificate file permissions are set, should pass", "Docker server certificate file permissions are not set, should not pass.")
+
+	//restore
+
+	procHelper = procSetUp
+	etcDocker = "etc/Docker"
+	refPerms = 0444
 }
 
 func TestCheckCertKeyOwner(t *testing.T) {
+	etcDocker, err = filepath.Abs("testdata/etc/docker")
+	if err != nil {
+		t.Errorf("Could not get testdata/etc/docker %s", err)
+	} 
+
+	procHelper = func(procname string, tlsOpt string) (val string){
+		val = etcDocker
+		return
+	}
+
+	helperCheckOwner(t, CheckCertKeyOwner, "Root:root is set to Docker server certificate key file ownership, should pass.", "Root:root is not set to Docker server certificate key file ownership, should not pass.", true)
+
+	//restore
+
+	procHelper = procSetUp
+	etcDocker = "etc/Docker"
 	
 }
 
 func TestCheckCertKeyPerms(t *testing.T) {
+	etcDocker, err = filepath.Abs("testdata/etc/docker")
+	if err != nil {
+		t.Errorf("Could not get testdata/etc/docker %s", err)
+	} 
+
+	procHelper = func(procname string, tlsOpt string) (val string){
+		val = etcDocker
+		return
+	}
+
+	fileInfo, err := os.Stat(etcDocker)
 	
+	if err != nil {
+		t.Errorf("Could not get testdata/etc/docker file permissions %s", err)
+	} 
+
+	helperCheckPerms(t, fileInfo, CheckCertKeyPerms, "Docker server certificate key file permissions are set, should pass", "Docker server certificate key file permissions are not set, should not pass.")
+
+	//restore
+
+	procHelper = procSetUp
+	etcDocker = "etc/Docker"
+	refPerms = 0400
 }
 
 func TestCheckDockerSockOwner(t *testing.T) {

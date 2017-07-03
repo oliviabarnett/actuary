@@ -26,6 +26,15 @@ var(
 )
 var refPerms uint32 = 0644 //Original setting for file permissions
 
+//originally keep procHelper set to procSetUp -- for testing, set procHelper to other functions
+var procHelper = procSetUp
+
+//Globalize the set up call so that it can be replaced during testing with a call to test files
+func procSetUp(procname string, tlsOpt string) (val string){
+	dockerProc, _ := getProcCmdline(procname)
+	_, certPath := getCmdOption(dockerProc, tlsOpt)
+	return certPath
+}
 
 func CheckServiceOwner(t Target) (res Result) {
 	res.Name = "3.1 Verify that docker.service file ownership is set to root:root"
@@ -253,9 +262,10 @@ func CheckRegistryCertPerms(t Target) (res Result) {
 
 func CheckCACertOwner(t Target) (res Result) {
 	res.Name = "3.9 Verify that TLS CA certificate file ownership is set to root:root"
-	refUser := "root"
-	dockerProc, _ := getProcCmdline("docker")
-	_, certPath := getCmdOption(dockerProc, "--tlscacert")
+	
+	//currently returns nil -- can't find "docker" process with --tlscacert
+	certPath := procHelper("docker", "--tlscacert")
+
 	fileInfo, err := os.Stat(certPath)
 	if os.IsNotExist(err) {
 		res.Skip("File could not be accessed")
@@ -275,12 +285,13 @@ func CheckCACertOwner(t Target) (res Result) {
 }
 
 func CheckCACertPerms(t Target) (res Result) {
-	var refPerms uint32
+	//var refPerms uint32
 	res.Name = `3.10 Verify that TLS CA certificate file permissions
 	are set to 444 or more restrictive`
-	refPerms = 0444
-	dockerProc, _ := getProcCmdline("docker")
-	_, certPath := getCmdOption(dockerProc, "--tlscacert")
+	//refPerms = 0444
+	
+	certPath := procHelper("docker", "--tlscacert")
+
 	fileInfo, err := os.Stat(certPath)
 	if os.IsNotExist(err) {
 		res.Skip("File could not be accessed")
@@ -302,9 +313,10 @@ func CheckCACertPerms(t Target) (res Result) {
 func CheckServerCertOwner(t Target) (res Result) {
 	res.Name = `3.11 Verify that Docker server certificate file ownership is set to
         root:root`
-	refUser := "root"
-	dockerProc, _ := getProcCmdline("docker")
-	_, certPath := getCmdOption(dockerProc, "--tlscert")
+	//refUser := "root"
+	
+	certPath := procHelper("docker", "--tlscert")
+	
 	fileInfo, err := os.Stat(certPath)
 	if os.IsNotExist(err) {
 		res.Skip("File could not be accessed")
@@ -324,12 +336,13 @@ func CheckServerCertOwner(t Target) (res Result) {
 }
 
 func CheckServerCertPerms(t Target) (res Result) {
-	var refPerms uint32
+	//var refPerms uint32
 	res.Name = `3.12 Verify that Docker server certificate file permissions
 		are set to 444 or more restrictive`
-	refPerms = 0444
-	dockerProc, _ := getProcCmdline("docker")
-	_, certPath := getCmdOption(dockerProc, "--tlscert")
+	//refPerms = 0444
+	
+	certPath := procHelper("docker", "--tlscert")
+
 	fileInfo, err := os.Stat(certPath)
 	if os.IsNotExist(err) {
 		res.Skip("File could not be accessed")
@@ -351,9 +364,10 @@ func CheckServerCertPerms(t Target) (res Result) {
 func CheckCertKeyOwner(t Target) (res Result) {
 	res.Name = `3.13 Verify that Docker server certificate key file ownership is set to
         root:root`
-	refUser := "root"
-	dockerProc, _ := getProcCmdline("docker")
-	_, certPath := getCmdOption(dockerProc, "--tlskey")
+	//refUser := "root"
+	
+	certPath := procHelper("docker", "--tlskey")
+	
 	fileInfo, err := os.Stat(certPath)
 	if os.IsNotExist(err) {
 		res.Skip("File could not be accessed")
@@ -362,6 +376,7 @@ func CheckCertKeyOwner(t Target) (res Result) {
 
 	refUid, refGid := getUserInfo(refUser)
 	fileUid, fileGid := getFileOwner(fileInfo)
+
 	if (refUid == fileUid) && (refGid == fileGid) {
 		res.Status = "PASS"
 	} else {
@@ -373,12 +388,13 @@ func CheckCertKeyOwner(t Target) (res Result) {
 }
 
 func CheckCertKeyPerms(t Target) (res Result) {
-	var refPerms uint32
+	//var refPerms uint32
 	res.Name = `3.14 Verify that Docker server certificate key file
 	permissions are set to 400`
-	refPerms = 0400
-	dockerProc, _ := getProcCmdline("docker")
-	_, certPath := getCmdOption(dockerProc, "--tlskey")
+	//refPerms = 0400
+	
+	certPath := procHelper("docker", "--tlskey")
+
 	fileInfo, err := os.Stat(certPath)
 	if os.IsNotExist(err) {
 		res.Skip("File could not be accessed")

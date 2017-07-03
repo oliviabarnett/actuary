@@ -2,32 +2,18 @@ package actuary
 
 
 import (
-	//"os"\
-	//"fmt"
-
+	
 	"encoding/json"
-	//"log"
-	//"io/ioutil"
 	"testing"
-	//"strconv"
-	//"io"
-	//"net/http" //Package http provides HTTP client and server implementations.
-	//"net/http/httptest" //Package httptest provides utilities for HTTP testing.
 	"github.com/docker/engine-api/types"
-	//"github.com/docker/go-connections/nat"	
-	//"github.com/docker/docker/api/types"
-	//"github.com/docker/docker/client"
-	//"github.com/docker/docker/api"
-	//"github.com/gorilla/mux"
-	//"github.com/diogomonica/actuary/actuary"
-
-
 )
 
 //6. Docker Security Operations
 
 func TestCheckImageSprawl(t *testing.T) {
 //GET /images/json
+//requires mocking server
+
 	var imgList imageList
 
 	imgs := imgList.populateImageList(2).images
@@ -67,6 +53,10 @@ func TestCheckImageSprawl(t *testing.T) {
 }
 
 func TestCheckContainerSprawl(t *testing.T) {
+//requires mocking server
+//PROBLEM: same API call with different parameter passed -- how to mock this? 
+	//Needs a different response... Can't currently test fail case here
+
 	var containerList1 typeContainerList
 	//var containerList2 typeContainerList
 

@@ -19,6 +19,7 @@ import (
 var trust string = os.Getenv("DOCKER_CONTENT_TRUST")
 
 func CheckContainerUser(t Target) (res Result) {
+
 	var rootContainers []string
 	res.Name = "4.1 Create a user for the container"
 	containers := t.Containers

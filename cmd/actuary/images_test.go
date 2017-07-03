@@ -2,51 +2,41 @@ package actuary
 
 
 import (
-	//"os"\
-	//"fmt"
 
-	//"encoding/json"
-	//"log"
-	//"io/ioutil"
 	"testing"
-	//"strconv"
-	//"io"
-	//"net/http" //Package http provides HTTP client and server implementations.
-	//"net/http/httptest" //Package httptest provides utilities for HTTP testing.
-	//"github.com/docker/engine-api/types"
-	//"github.com/docker/go-connections/nat"	
-	//"github.com/docker/docker/api/types"
-	//"github.com/docker/docker/client"
-	//"github.com/docker/docker/api"
-	//"github.com/gorilla/mux"
-	//"github.com/diogomonica/actuary/actuary"
-
-
 )
 
 //4. Container Images and Build File
 
 func TestCheckContainerUser(t *testing.T) {
-	//all containers should have a not blank user?
 	t.Log("Setting all container users")
 
 	containers := testTarget.Containers
-
-	//t.Log("XXXXXXX %i", len(testTarget.Containers))
 
 	for _, container := range containers {
 		container.Info.Config.User = "x"
 	}
 
-	res := CheckContainerUser(testTarget)
+	for i := 0; i< 2; i++{
 
-	if  res.Status != "PASS" {
-		t.Errorf("All users checked, should have passed." )
+		res := CheckContainerUser(testTarget)
+
+		if  i == 0 && res.Status != "PASS" {
+			t.Errorf("All users checked, should have passed." )
+		}
+
+		if  i == 1 && res.Status == "PASS" {
+			t.Errorf("All blank users, should not have passed." )
+		}
+
+		//fail case
+		containers[0].Info.Config.User = ""
 	}
 }
 
 func TestCheckContentTrust(t *testing.T) {
 	//Question about os.GetEnv -- doesn't seem to work?
+	//This might be too abstracted... not testing the function well enough
 
 	trust = "1"
 
@@ -62,6 +52,7 @@ func TestCheckContentTrust(t *testing.T) {
 			t.Errorf("Content trust for Docker disabled, should not have passed." )
 		}
 
+		//fail case
 		trust = ""
 	}
 
