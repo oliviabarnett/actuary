@@ -146,7 +146,7 @@ func CheckPrivilegedPorts(t Target) (res Result) {
 	}
 	privPorts := func(c ContainerInfo) bool {
 		ports := c.NetworkSettings.Ports
-		//log.Printf("PORT: %v", ports)
+		
 
 		for _, port := range ports {
 			for _, portmap := range port {

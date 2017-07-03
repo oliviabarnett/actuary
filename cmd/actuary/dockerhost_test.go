@@ -9,24 +9,19 @@ import (
 	"path/filepath"
 	"fmt"
 	"encoding/json"
-	//"log"
-	//"io/ioutil"
 	"testing"
 	"strconv"
-	//"io"
 	"net/http" //Package http provides HTTP client and server implementations.
 	"net/http/httptest" //Package httptest provides utilities for HTTP testing.
 	"github.com/docker/engine-api/types"
-	//"github.com/docker/go-connections/nat"	
-	//"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/api"
-	//"github.com/gorilla/mux"
-	//"github.com/diogomonica/actuary/actuary"
 )
 
 //variables for tests, helper functions
+//Rest of test files use the following functions/variables!
 
+//group together the api call and the expected object (in bytes)
 type callPairing struct{
 	call string
 	obj []byte
@@ -40,6 +35,7 @@ type typeContainerList struct{
 	typeContainers []types.Container
 }
 
+//For testing functions that require a specific number of images
 func (list imageList) populateImageList(size int) (imageList){
 	list.images = nil
 	var img types.Image
@@ -51,6 +47,7 @@ func (list imageList) populateImageList(size int) (imageList){
 	return list
 }
 
+//For testing functions that require a specific number of containers
 func (list typeContainerList) populateContainerList(size int) (typeContainerList){
 	list.typeContainers = nil
 	var c types.Container
@@ -62,12 +59,10 @@ func (list typeContainerList) populateContainerList(size int) (typeContainerList
 	return list
 }
 
-//func passOrFail(t *testing.T, res Result, pass string, fail string) 
-
 var testTarget, err = NewTarget()
 
-func testServer (t *testing.T, pairings ...callPairing) (server *httptest.Server) { //inject a different response based on the test?
-
+func testServer (t *testing.T, pairings ...callPairing) (server *httptest.Server) { //inject a different response based on the test
+//"pairings" used because there is sometimes more than one call to be mocked for a function
 	mux := http.NewServeMux()
 
 	for _, pair := range pairings {
@@ -76,7 +71,6 @@ func testServer (t *testing.T, pairings ...callPairing) (server *httptest.Server
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request){
 				w.Header().Set("Content-Type", "application/json")
 				w.Write(pair.obj)
-				//log.Printf("Req: %s %s\n", r.Host, r.URL.Path)
 		}))
 	}
 
@@ -84,7 +78,6 @@ func testServer (t *testing.T, pairings ...callPairing) (server *httptest.Server
 
 	//manipulate testTarget client to point to server
 	testTarget.Client, err = client.NewClient(server.URL, api.DefaultVersion, nil, nil)
-
 
 	if err != nil {
 		t.Errorf("Could not manipulate test target client.")
@@ -94,7 +87,9 @@ func testServer (t *testing.T, pairings ...callPairing) (server *httptest.Server
 }
 
 //1. host configuration
-//Lots of system file calls
+//Mainly system file calls
+//Method here: redirect what files the functions are run on -- files created in the /testdata folder. 
+//Do this through the use of global variables, make sure to restore original values
 
 func TestCheckSeparatePartition(t *testing.T){
 	temp := fstab
@@ -115,12 +110,14 @@ func TestCheckSeparatePartition(t *testing.T){
 
 		fstab = "testdata/fstabFail"
 	}
+	
+	//restore
 
 	fstab = temp
 }
 
 func TestCheckKernelVersion(t *testing.T) {
-	//just checks info.KernelVersion of target. Fake info
+	//just checks info.KernelVersion of target. Fake info within testTarget
 	t.Log("Changing Kernel Version to 4.9.27-moby")
 
 	testTarget.Info.KernelVersion = "4.9.27-moby"
@@ -143,6 +140,7 @@ func TestCheckRunningServices(t *testing.T) {
 }
 
 func TestCheckDockerVersion(t *testing.T) {
+	//mock server required
 	
 	var ver = types.Version{
 		Version: "20000",
@@ -173,6 +171,8 @@ func TestCheckDockerVersion(t *testing.T) {
 			t.Errorf("Host not using the correct Docker server, should not pass" )
 		}
 
+		//fail case
+
 		ver.Version = "0"
 	}
 
@@ -197,13 +197,14 @@ func TestCheckTrustedUsers(t *testing.T) {
 		groupFile = "testData/groupFail"
 	}
 	
-	//fail case
+	//fail case and restoration
 
 	groupFile = temp
 }
 
 //if these tests don't run right, make sure the executable bit is set on the binary test files in testdata
 func changePath(t *testing.T, binLoc string) {
+	//This function is necessary in running all of the tests that check system files
 	// get the absolute location of the directory your test binary
 	// your test binary should be at testdata/testauditctl1/auditctl
 	// make sure the executable bit is set on that file (chmod +x)
@@ -213,9 +214,6 @@ func changePath(t *testing.T, binLoc string) {
 	}
 	// get the current path
 	path := os.Getenv("PATH")
-
-	//log.Printf("BIN LOCATION: %v", binlocation)
-	//log.Printf("CURRENT PATH: %v", path)
 
 	// add the test binary directory to the beginning so its searched first
 	// no cleanup is necessary; this change to PATH only exists for the lifetime

@@ -2,47 +2,28 @@ package actuary
 
 
 import (
-	//"os"\
-	//"fmt"
-
+	
 	"encoding/json"
-	//"log"
-	//"io/ioutil"
-
 	"testing"
-	//"strconv"
-	//"io"
-	//"net/http" //Package http provides HTTP client and server implementations.
-	//"net/http/httptest" //Package httptest provides utilities for HTTP testing.
 	"github.com/docker/engine-api/types"
-	//"github.com/docker/engine-api/types/container"
-	//"github.com/docker/go-connections/nat"	
-	//"github.com/docker/docker/api/types"
-	//"github.com/docker/docker/client"
-	//"github.com/docker/docker/api"
-	//"github.com/gorilla/mux"
-	//"github.com/diogomonica/actuary/actuary"
-
 
 )
 
 
 //5. Container Runtime
-	//for all container runtime tests, simplify to one container
 
+//for all container runtime tests, simplify to one container (testTarget has only one container in containerList)
 func containerTestsHelper(t *testing.T, orig func(t Target) Result, f func(c Container, i int) Container, err1 string, err2 string){
 
 	temp := testTarget.Containers
 	testTarget.Containers = ContainerList{testTarget.Containers[0]}
 
-	//log.Printf("%v", testTarget)
-
 	for i := 0; i< 2; i++{	
 
-		//Update the test containers (within testTarget to either pass or fail, depending on i)
+		//Update the test containers with f to either pass or fail, depending on i
 		testTarget.Containers[0] = f(testTarget.Containers[0], i)
 
-		//Run the function to be tested on testTarget
+		//Run the function to be tested on testTarget and determine results
 		res := orig(testTarget)
 
 		if i == 0 && res.Status != "PASS" {
@@ -59,8 +40,9 @@ func containerTestsHelper(t *testing.T, orig func(t Target) Result, f func(c Con
 
 
 func TestCheckAppArmor(t *testing.T) {
-	//all containers should have AppArmor profile
 
+	//function to be passed into containerTestsHelper
+	//Ensures passing containers, then failing containers in testTarget
 	f := func(c Container, i int) (Container) { 
 
 		if i == 0 {
@@ -148,6 +130,7 @@ func TestCheckSensitiveDirs(t *testing.T) {
 
 func TestCheckSSHRunning(t *testing.T) {
 // GET "/containers/{name:.*}/top"
+//requires mocking servers
 	var processList = types.ContainerProcessList{
 					Titles: []string{"UID", "PID","PPID","C","STIME","TTY","TIME","CMD"},
 					Processes: [][]string{{"root","13642","882","0","17:03","pts/0","00:00:00","/bin/bash"}, 
@@ -189,6 +172,25 @@ func TestCheckSSHRunning(t *testing.T) {
 
 func TestCheckPrivilegedPorts(t *testing.T) {
 
+	//PROBLEM: difficulty manipulating portbinding type
+
+	// f := func(c Container, i int) (Container) { 
+	// 	ports := c.Info.NetworkSettings.Ports
+	// 	for _, port := range ports {
+	// 		for _, portmap := range port {
+	// 			if i == 0 {
+	// 				portmap.HostPort = "1025"
+	// 			}else {
+	// 				portmap.HostPort = "1000"
+	// 			}
+	// 		}
+	// 	}
+
+	// 	return c
+	// }
+
+	// containerTestsHelper(t, CheckPrivilegedPorts, f, "No ports are privileged, should have passed.", "Ports are privileged, should not have passed.")
+
 	// f := func(c Container, i int) (Container) { 
 	// 	if i == 0 {
 	// 		pb1 := nat.PortBinding{"hostIp", "1000"}
@@ -206,7 +208,7 @@ func TestCheckPrivilegedPorts(t *testing.T) {
 
 
 func TestCheckNeededPorts(t *testing.T) {
-	
+	//same problem as previous function
 }
 
 func TestCheckHostNetworkMode(t *testing.T) {
@@ -329,6 +331,8 @@ func TestCheckIPCNamespace(t *testing.T) {
 }
 
 func TestCheckHostDevices(t *testing.T) {
+
+	//log.Printf("DEVICES: %v", testTarget.Containers[0].Info.HostConfig.Devices)
 	// f := func(c Container, i int) (Container) { 
 
 	// 	if i == 0 {

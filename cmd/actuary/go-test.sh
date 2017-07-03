@@ -1,5 +1,5 @@
 #!/bin/bash
-
+#Mounting host directory into a container method -- not actually implemented
 
 docker build ../../ -t actuaryimage
 
