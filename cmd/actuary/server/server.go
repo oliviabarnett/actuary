@@ -60,6 +60,7 @@ func (report *outputData) postResults(w http.ResponseWriter, r *http.Request, re
 	if err != nil {
 		log.Fatalf("Error unmarshalling id: %s", err)
 	}
+
 	*reqList = append(*reqList, req)
 	nodeID := string(req.NodeID)
 	results := req.Results
@@ -169,7 +170,6 @@ var (
 			if err != nil {
 				log.Fatalf("ListenAndServeTLS: %s", err)
 			}
-
 			return nil
 		},
 	}

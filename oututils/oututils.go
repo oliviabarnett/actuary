@@ -17,7 +17,7 @@ type Report struct {
 	Results  []actuary.Result
 }
 
-//CreateReport creates a new Report object
+// CreateReport creates a new Report object
 func CreateReport(filename string) *Report {
 	r := &Report{}
 	if path.IsAbs(filename) {
@@ -25,14 +25,14 @@ func CreateReport(filename string) *Report {
 	} else {
 		curDir, err := os.Getwd()
 		if err != nil {
-
+			log.Fatalf("Unable to create report: %s", err)
 		}
 		r.Filename = path.Join(curDir, filename)
 	}
 	return r
 }
 
-//WriteJSON prints the report into a JSON file
+// WriteJSON prints the report into a JSON file
 func (r *Report) WriteJSON() (err error) {
 	res, err := json.MarshalIndent(r.Results, "", "  ")
 	if err != nil {
@@ -40,7 +40,7 @@ func (r *Report) WriteJSON() (err error) {
 	}
 	err = ioutil.WriteFile(r.Filename, res, 0644)
 	if err != nil {
-		log.Fatalf("Unable to write results to file")
+		log.Fatalf("Unable to write results to file %s", err)
 	}
 	return
 }
@@ -53,12 +53,12 @@ func (r *Report) WriteXML() (err error) {
 	}
 	err = ioutil.WriteFile(r.Filename, res, 0644)
 	if err != nil {
-		log.Fatal("Unable to write results to file")
+		log.Fatalf("Unable to write results to file %s", err)
 	}
 	return
 }
 
-//ConsolePrint outputs the result of each audit
+// ConsolePrint outputs the result of each audit
 func ConsolePrint(res actuary.Result) {
 	var status string
 	bold := color.New(color.Bold).SprintFunc()
