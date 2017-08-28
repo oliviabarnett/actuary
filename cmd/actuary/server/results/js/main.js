@@ -1,32 +1,38 @@
+// Initial loading of results and calls to server
 // Keep track of nodeSelected 
 var nodeSelected = ""
 var dataSelected = ""
 
 window.onload=function(){
 	var domain = window.location.href.split("/")[0]
-	
 	// On page load, get official list of nodes in swarm for comparison
 	getNodeList(domain).then(function(response){
-		var nodeList = response.split(" ")
-		if ((nodeList.length-1) == 1){
-			var swarmAll = $('<h3>/>').attr("id", "swarm-all").addClass("pointer").text((nodeList.length-1) + " node")
+		var managers = response.split("--")[0].split(" ")
+		managers.pop()
+		var workers = response.split("--")[1].split(" ")
+		workers.pop()
+		var nodeList = managers.concat(workers)
+		if ((nodeList.length) == 1){
+			var swarmAll = $('<h3>/>').attr("id", "swarm-all").addClass("pointer").text((nodeList.length) + " node")
 		}else{
-			var swarmAll = $('<h3>/>').attr("id", "swarm-all").addClass("pointer").text((nodeList.length-1) + " nodes")
+			var swarmAll = $('<h3>/>').attr("id", "swarm-all").addClass("pointer").text((nodeList.length) + " nodes")
 		}
 		$('#swarm-data').append(
 			$('<div/>').attr("id", "swarm-stats").append(
 				swarmAll,
 				$('<ul></ul>').append(
-					$('<li></li>').attr("id", "swarm-passing").addClass("pointer").text("0 passed"),
-					$('<li></li>').attr("id", "swarm-failing").addClass("pointer").text("0 failed"),
-					$('<li></li>').attr("id", "swarm-undetermined").addClass("pointer").text("0 undetermined")
-				)
-			)
+					$('<li></li>').attr("id", "swarm-passing").addClass("pointer node-data").text("0 good"),
+					$('<li></li>').attr("id", "swarm-failing").addClass("pointer node-data").text("0 bad"),
+					$('<li></li>').attr("id", "swarm-undetermined").addClass("pointer node-data").text("0 undetermined")
+				),
+				$('<h3>/>').attr("id", "swarm-tests-header").addClass("pointer").text("0 inconsistent tests"),
+			),
 		)
 		// Clicking functionality for filtering nodes by passing, failing, undetermined
 		$("#swarm-all").click(function(){
 			if (dataSelected != "") {
 				$("#"+ dataSelected).css({"font-weight": "500", "text-transform": "lowercase"})
+				$("#swarm-tests-header").css({"font-weight": "500", "text-transform": "lowercase"})
 			}
 			$(".passing").show()
 			$(".failing").show()
@@ -39,6 +45,7 @@ window.onload=function(){
 		$("#swarm-passing").click(function(){
 			if (dataSelected != "") {
 				$("#"+ dataSelected).css({"font-weight": "500", "text-transform": "lowercase"})
+				$("#swarm-tests-header").css({"font-weight": "500", "text-transform": "lowercase"})
 				$(".failing").hide()
 				$(".undetermined").hide()
 				$(".node").hide()
@@ -51,6 +58,7 @@ window.onload=function(){
 		$("#swarm-failing").click(function(){
 			if (dataSelected != "") {
 				$("#"+ dataSelected).css({"font-weight": "500", "text-transform": "lowercase"})
+				$("#swarm-tests-header").css({"font-weight": "500", "text-transform": "lowercase"})
 				$(".passing").hide()
 				$(".undetermined").hide()
 				$(".node").hide()
@@ -63,6 +71,7 @@ window.onload=function(){
 		$("#swarm-undetermined").click(function(){
 			if (dataSelected != "") {
 				$("#"+ dataSelected).css({"font-weight": "500", "text-transform": "lowercase"})
+				$("#swarm-tests-header").css({"font-weight": "500", "text-transform": "lowercase"})
 				$(".passing").hide()
 				$(".failing").hide()
 				$(".node").hide()
@@ -72,17 +81,22 @@ window.onload=function(){
 			$("#nodes-header").text("All Undetermined Nodes by ID:")
 			dataSelected = this.id
 		});
+		// Create: list of all nodes as node objects
+		// Create: A data structure organizing the swarm's data
 		// Initially, add all nodes with status "loading" before test information has been received
-		for (i = 0; i < nodeList.length-1; i++){
-				var nodeBox = $('<div/>').addClass('row node').attr("id", nodeList[i])
-				var nodeHeader = $('<h4>/>').addClass("pointer").text(nodeList[i]).attr({"id": "header-results-" + nodeList[i], "style": "cursor: pointer;"})
-				var nodeStats = $('<div/>').attr('id', "stats-" + String(nodeList[i])).text("Loading...")
-				$(nodeBox).append(nodeHeader, nodeStats)
-				$("#nodes-all").append(nodeBox)
+		var list = []
+		var data = new swarmData(list)
+		// First add manager nodes
+		for (i = 0; i < nodeList.length; i++){
+			var manager = ($.inArray(nodeList[i], managers) !== -1)
+			list[i] = new Node(nodeList[i], data, manager)
+			list[i].setLoading()
 		}
+		data.updateNodes(list)
 		// Check each node -- see if data has been recieved yet
-		for (count = 0; count < nodeList.length-1; count++){
-			pollList(nodeList[count], domain)
+		// Poll list continues to poll until results are in
+		for (i = 0; i < list.length; i++){
+			pollList(list[i], domain)
 		}
 	}), function(error) {
 		console.log("failed getNodeList")
@@ -103,69 +117,19 @@ function getNodeList(domain){
 
 // If node data has been received, display, else wait and then try again
 function pollList(node, domain){
-	checkNode(domain, node).then(function(response){
+	node.checkNode(domain).then(function(response){
 		if (response[0] == "true"){
-			getResults(domain, response[1])			
+			node.callResults(domain)			
 		}else if (response[0] == "false") {
 			sleep(2000).then(() => {
-				pollList(response[1], response[2])
+				pollList(node, response[2])
 			})
 		}
-	}), function(error, nodeID) {
+	}), function(error) {
 		console.log("failed to get node " + response[1]+ " because " + error)
 	}	
 }	
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// Call to server checks if data has been received on server side
-function checkNode(domain, nodeID){
-	url = domain + "/checkNode"
- 	return new Promise((resolve, reject) => {
- 		var x = new XMLHttpRequest();
- 		x.open("POST", url);
- 		x.setRequestHeader('Content-type', 'text/html')
- 		x.onload = () => resolve([String(x.responseText), nodeID, domain]);
- 		x.onerror = () => reject([String(x.statusText), nodeID, domain]);
- 		x.send(nodeID);
- 	});
-};
-
-// Get the output of the specified node from the server
-function getResults(domain, nodeID){
-	var urlParams = new URLSearchParams(window.location.search)
-	var token = getCookie('token')
-	if (token != "") {
-		domain = domain + "/result"
-		var x = new XMLHttpRequest()
-		x.open("Get", domain + "?nodeID=" + nodeID) 
-		x.setRequestHeader('Authorization', 'Bearer ' + token)
-		x.onreadystatechange = function(){
-			if (x.readyState == 4 && x.status == 200){
-				var data = JSON.parse(x.responseText)
-				analyzeResults(data, nodeID)
-			}
-		}
-		x.send()
-	}else{
-		console.log("Could not retrieve token")
-	}
-}
-
-function getCookie(cname){
-	var name = cname + "=";
-    var decodedCookie = decodeURIComponent(document.cookie);
-    var ca = decodedCookie.split(';');
-    for(var i = 0; i <ca.length; i++) {
-        var c = ca[i];
-        while (c.charAt(0) == ' ') {
-            c = c.substring(1);
-        }
-        if (c.indexOf(name) == 0) {
-            return c.substring(name.length, c.length);
-        }
-    }
-    return "";
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"github.com/diogomonica/actuary/cmd/actuary/check"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
@@ -26,6 +27,11 @@ func init() {
 type outputData struct {
 	Mu      *sync.Mutex
 	Outputs map[string][]byte
+}
+
+type nodeRoles struct {
+	Managers []swarm.Node
+	Workers  []swarm.Node
 }
 
 func AddMiddleware(h http.Handler, middleware ...func(http.Handler) http.Handler) http.Handler {
@@ -50,7 +56,6 @@ func (report *outputData) getResults(w http.ResponseWriter, r *http.Request) {
 }
 
 func (report *outputData) postResults(w http.ResponseWriter, r *http.Request, reqList *[]check.Request) {
-	w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 	output, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Fatalf("Error reading: %s", err)
@@ -118,9 +123,21 @@ var (
 				w.Header().Set("Content-Type", "text/html")
 				w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 				w.WriteHeader(http.StatusOK)
+				var nodes = nodeRoles{Managers: nil, Workers: nil}
 				var b bytes.Buffer
 				for _, node := range nodeList {
-					b.Write([]byte(node.ID + " "))
+					if node.ManagerStatus == nil {
+						nodes.Workers = append(nodes.Workers, node)
+					} else {
+						nodes.Managers = append(nodes.Managers, node)
+					}
+				}
+				for _, manager := range nodes.Managers {
+					b.Write([]byte(manager.ID + " "))
+				}
+				b.Write([]byte("--"))
+				for _, worker := range nodes.Workers {
+					b.Write([]byte(worker.ID + " "))
 				}
 				b.WriteTo(w)
 			})
