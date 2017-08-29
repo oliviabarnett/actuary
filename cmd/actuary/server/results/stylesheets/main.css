@@ -16,7 +16,7 @@ body {
 	padding-top: none;
 	width: 100%;
     overflow-y: scroll;  
-    overflow-x: visible;
+    overflow-x: hidden;
     height: 77vh;
 }
 

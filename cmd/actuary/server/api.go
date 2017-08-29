@@ -32,7 +32,6 @@ func randomize() []byte {
 func NewAPI(certPath, keyPath string) *API {
 	var signingKey = randomize()
 	tokenService := services.NewTokenService(signingKey)
-
 	return &API{
 		encryptionKey: signingKey,
 		Tokens:        handlers.NewTokens(tokenService),
@@ -57,7 +56,6 @@ func (a *API) Authenticate(next http.Handler) http.Handler {
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}
-
 		// Now parse the token
 		parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
 			// Don't forget to validate the alg is what you expect:

@@ -36,3 +36,12 @@ class result{
 		}
 	}
 }
+
+function format(output){
+	console.log(output.constructor === Array)
+	if (output.constructor === Array){
+		output.toString().replace(",", " ,") 
+	}
+	console.log(output)
+	return output
+}
