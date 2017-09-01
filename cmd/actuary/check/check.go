@@ -97,9 +97,7 @@ func basicAuth(client *http.Client) string {
 func sendResults(out io.ReadCloser, rep *oututils.Report) {
 	urlPOST := server
 	tr := tar.NewReader(out)
-
 	_, err := tr.Next()
-
 	if err != nil {
 		log.Fatalf("Error with tar %v", err)
 	}
@@ -125,7 +123,6 @@ func sendResults(out io.ReadCloser, rep *oututils.Report) {
 	if err != nil {
 		log.Fatalf("Error with close bracket: %v", err)
 	}
-
 	rep.Results = testResults
 	switch strings.ToLower(outputFormat) {
 	case "json":
@@ -147,9 +144,6 @@ func sendResults(out io.ReadCloser, rep *oututils.Report) {
 			if err != nil {
 				log.Fatalf("Could not create a new request: %v", err)
 			}
-			if err != nil {
-				log.Fatalf("couldn't read req: %v", err)
-			}
 			reqPost.Header.Set("Content-Type", "application/json")
 			client := HttpClient()
 
@@ -161,6 +155,8 @@ func sendResults(out io.ReadCloser, rep *oututils.Report) {
 				log.Fatalf("Could not send post request to client: %v", err)
 			}
 			defer respPost.Body.Close()
+		} else {
+			log.Fatalf("No server specified for results.")
 		}
 	}
 }
@@ -177,12 +173,10 @@ var (
 				if err != nil {
 					log.Fatalf("Could not create new client: %s", err)
 				}
-
 				_, err = cli.ImagePull(ctx, "oliviabarnett/actuary:actuary_image", types.ImagePullOptions{})
 				if err != nil {
 					log.Fatalf("Could not pull image: %s", err)
 				}
-
 				resp, err := cli.ContainerCreate(ctx, &container.Config{
 					Image: "oliviabarnett/actuary:actuary_image",
 					Cmd:   []string{"check", "-f=cmd/actuary/mac-default.toml", "-o=json", "-p=" + strings.ToLower(outputPath) + "/json", "-s=https://server:8000/results", "--swarm=false"}},
@@ -208,7 +202,11 @@ var (
 				case err := <-errC:
 					log.Fatalf("Container wait: %s", err)
 				case _ = <-resultC:
-					rep := oututils.CreateReport(outputFormat)
+					path, err := os.Getwd()
+					if err != nil {
+						log.Fatalf("Could not get path %v", err)
+					}
+					rep := oututils.CreateReport(path + "/output/" + os.Getenv("NODE") + "." + outputFormat)
 					// Copy out actuary results from container
 					out, _, err := cli.CopyFromContainer(ctx, resp.ID, outputPath+"/json")
 					if err != nil {
@@ -263,7 +261,6 @@ var (
 						}
 					}
 				}
-
 				rep := &oututils.Report{Filename: outputPath, Results: results}
 				err = rep.WriteJSON()
 				if err != nil {

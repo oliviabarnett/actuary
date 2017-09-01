@@ -104,7 +104,6 @@ func (p *Parser) ParseWithClaims(tokenString string, claims Claims, keyFunc Keyf
 	// Validate Claims
 	if !p.SkipClaimsValidation {
 		if err := token.Claims.Valid(); err != nil {
-
 			// If the Claims Valid returned an error, check if it is a validation error,
 			// If it was another error type, create a ValidationError with a generic ClaimsInvalid flag set
 			if e, ok := err.(*ValidationError); !ok {

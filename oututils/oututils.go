@@ -39,9 +39,11 @@ func (r *Report) WriteJSON() (err error) {
 		log.Fatalf("Unable to marshal results into JSON file")
 	}
 	err = ioutil.WriteFile(r.Filename, res, 0644)
+	log.Printf("writing json for %v", r.Filename)
 	if err != nil {
 		log.Fatalf("Unable to write results to file %s", err)
 	}
+	log.Printf("wrote")
 	return
 }
 

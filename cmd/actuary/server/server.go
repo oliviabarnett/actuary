@@ -83,7 +83,6 @@ var (
 			m := make(map[string][]byte)
 			var report = outputData{Mu: &sync.Mutex{}, Outputs: m}
 			var reqList []check.Request
-
 			// Get list of all nodes in the swarm via Docker API call
 			// Used for comparison to see which nodes have yet to be processed
 			ctx := context.Background()
@@ -95,7 +94,6 @@ var (
 			if err != nil {
 				log.Fatalf("Could not get list of nodes: %s", err)
 			}
-
 			cfg := &tls.Config{
 				MinVersion:               tls.VersionTLS12,
 				CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
@@ -113,11 +111,8 @@ var (
 				TLSConfig:    cfg,
 				TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
 			}
-
 			api := NewAPI(os.Getenv("TLS_CERT"), os.Getenv("TLS_KEY"))
-
 			mux.Handle("/token", api.Tokens)
-
 			// Send official list of nodes from docker client to browser
 			mux.HandleFunc("/getNodeList", func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "text/html")
